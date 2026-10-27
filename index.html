@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เกมเรียงให้ถูก ชีวิตไม่วุ่นวาย (Algorithm Sequence Game)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@400;500;600;700&family=Sarabun:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background: linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #c084fc 100%);
+            user-select: none;
+        }
+        .font-heading {
+            font-family: 'Mitr', sans-serif;
+        }
+        @keyframes bounce-gentle {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+        .animate-bounce-gentle {
+            animation: bounce-gentle 2s infinite ease-in-out;
+        }
+        .sortable-ghost {
+            opacity: 0.4;
+            background-color: #fef08a !important;
+            border: 2px dashed #eab308 !important;
+        }
+        .sortable-chosen {
+            scale: 1.02;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-3 md:p-6">
+
+    <!-- Container หลัก -->
+    <div id="game-container" class="w-full max-w-2xl bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl border-4 border-amber-300 overflow-hidden flex flex-col min-h-[620px] relative">
+
+        <!-- ปุ่มสำหรับคุณครูที่มุมขวาบน -->
+        <button onclick="openTeacherLoginModal()" class="absolute top-3 right-3 z-20 bg-slate-800/80 hover:bg-slate-900 text-amber-300 font-heading text-xs font-bold px-3 py-1.5 rounded-full shadow-lg border border-amber-400/40 flex items-center space-x-1 transition-all">
+            <span>🔒 สำหรับคุณครู</span>
+        </button>
+
+        <!-- Header / Status Bar ของนักเรียน -->
+        <header id="status-bar" class="bg-gradient-to-r from-amber-400 via-orange-400 to-pink-500 p-3.5 px-6 flex justify-between items-center shadow-md hidden">
+            <div class="flex items-center space-x-2">
+                <span id="level-badge-container" class="bg-white/90 text-amber-900 font-heading font-bold px-3.5 py-1 rounded-full text-xs md:text-sm shadow-sm">
+                    ⭐ <span id="level-text-label">ข้อที่</span> <span id="current-level-display">1</span> / <span id="total-levels-display">6</span>
+                </span>
+            </div>
+            <!-- แสดงชื่อผู้เล่นปัจจุบัน -->
+            <div id="player-badge" class="bg-amber-100 text-amber-900 font-heading text-xs md:text-sm font-bold px-3 py-1 rounded-full hidden truncate max-w-[130px]">
+                👤 <span id="player-name-display">นักเรียน</span>
+            </div>
+            <div class="bg-white/90 text-slate-800 font-heading font-bold px-3.5 py-1 rounded-full text-xs md:text-sm shadow-sm flex items-center space-x-1">
+                <span>🏆 คะแนน:</span>
+                <span id="score-display" class="text-amber-600 font-bold text-base">0</span>
+            </div>
+        </header>
+
+        <!-- Main Area -->
+        <main class="flex-1 flex flex-col justify-between p-4 md:p-6 relative">
+
+            <!-- SCREEN 1: หน้าแรกสำหรับนักเรียน (Student Start Screen) -->
+            <div id="start-screen" class="flex-1 flex flex-col justify-center items-center text-center py-2">
+                <div class="text-6xl md:text-7xl mb-2 animate-bounce-gentle">🍳🍳</div>
+                <h1 class="text-2xl md:text-3xl font-bold font-heading text-indigo-700 mb-1">
+                    เรียงให้ถูก ชีวิตไม่วุ่นวาย
+                </h1>
+                <p class="text-slate-600 text-xs md:text-sm max-w-md mb-3">
+                    ฝึกเรียงลำดับขั้นตอนในชีวิตประจำวัน (อัลกอริทึม) ให้ถูกต้องกันเถอะ!
+                </p>
+
+                <!-- ช่องกรอกชื่อนักเรียน หรือ กลุ่ม -->
+                <div class="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 w-full max-w-md mb-3 text-left shadow-sm">
+                    <label class="block font-heading font-bold text-slate-700 text-xs md:text-sm mb-1">
+                        ✍️ พิมพ์ชื่อผู้เล่น หรือ ชื่อกลุ่ม (กลุ่มละ 3-4 คน):
+                    </label>
+                    <input type="text" id="player-name-input" placeholder="เช่น กลุ่มที่ 1 หรือ ด.ช.สมชาย..." class="w-full px-3 py-2 text-xs md:text-sm border-2 border-amber-200 rounded-xl focus:outline-none focus:border-indigo-500 font-sans">
+                </div>
+
+                <!-- การ์ดอธิบายแนวคิดอัลกอริทึม และกติกาเกม -->
+                <div class="bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-3 w-full max-w-md mb-4 text-left shadow-inner">
+                    <p class="font-heading font-bold text-indigo-900 text-xs mb-1 text-center">🏆 กติกาการแข่งขัน:</p>
+                    <ul class="text-xs text-indigo-950 space-y-1 list-disc list-inside">
+                        <li>ช่วยกันเรียงลำดับขั้นตอนในแต่ละโจทย์ให้ถูกต้อง</li>
+                        <li>เรียงถูกตั้งแต่ครั้งแรก รับไปเลย <b>1 คะแนน</b></li>
+                        <li>หากตอบผิด จะต้องลองคิดและเรียงใหม่จนกว่าจะถูกต้อง</li>
+                        <li>กลุ่มที่ได้คะแนนรวมมากที่สุดจะเป็นผู้ชนะ!</li>
+                    </ul>
+                </div>
+
+                <button onclick="checkAndStartGame()" class="w-full max-w-md bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 hover:from-indigo-700 hover:to-pink-600 text-white font-heading font-bold text-base md:text-lg py-3 rounded-2xl shadow-xl transition-all transform active:scale-95 flex items-center justify-center space-x-2">
+                    <span>🚀 เข้าสู่เกมเรียงลำดับ</span>
+                </button>
+            </div>
+
+            <!-- SCREEN 2: หน้าเล่นเกม (Gameplay Screen) -->
+            <div id="gameplay-screen" class="flex-1 flex flex-col justify-between hidden">
+                <div id="tutorial-banner" class="bg-amber-100 border-2 border-amber-300 text-amber-900 px-3 py-1.5 rounded-xl text-center text-xs font-bold mb-2 hidden animate-pulse">
+                    🎓 ข้อตัวอย่าง: ลองเรียงขั้นตอน "การทำไข่เจียว" ดูก่อนนะ! (ข้อนี้ไม่คิดคะแนน)
+                </div>
+
+                <!-- หัวข้อโจทย์ -->
+                <div class="bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-3 shadow-sm mb-2">
+                    <div class="flex items-center space-x-2 mb-1">
+                        <span id="topic-badge" class="bg-indigo-600 text-white font-heading text-[11px] md:text-xs font-bold px-2.5 py-0.5 rounded-full">
+                            โจทย์ข้อที่ 1
+                        </span>
+                    </div>
+                    <div class="text-slate-800 font-heading font-bold text-sm md:text-base flex items-center space-x-2">
+                        <span id="topic-icon" class="text-2xl">🍳</span>
+                        <span id="topic-title">การทำไข่เจียว</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-1">📌 ลากสลับ หรือใช้ปุ่ม ⬆️ ⬇️ เรียงขั้นตอนจาก **ลำดับที่ 1 (บนสุด)** ไปจนถึง **ลำดับสุดท้าย (ล่างสุด)**</p>
+                </div>
+
+                <!-- รายการขั้นตอน (Drag & Drop Container) -->
+                <div id="sortable-list" class="space-y-2 flex-1 my-2 overflow-y-auto max-h-[320px] pr-1">
+                    <!-- รายการไอเทมขั้นตอนจะถูกสร้างด้วย JS -->
+                </div>
+
+                <!-- ปุ่มส่งคำตอบ -->
+                <div class="pt-2">
+                    <button onclick="submitSequence()" class="w-full font-heading bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold text-base py-3 rounded-2xl shadow-md transition-transform active:scale-95 flex items-center justify-center space-x-2">
+                        <span>🎯 ตรวจคำตอบเรียงลำดับ</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- SCREEN 3: หน้าจบเกมสำหรับนักเรียน (End Screen & Learning Summary) -->
+            <div id="end-screen" class="flex-1 flex flex-col justify-center items-center text-center py-3 hidden">
+                <div id="end-icon" class="text-6xl md:text-7xl mb-1 animate-bounce-gentle">🎉</div>
+                <h2 class="text-2xl md:text-3xl font-heading font-bold text-indigo-800 mb-1">
+                    ภารกิจเรียงลำดับสำเร็จ!
+                </h2>
+                <p class="text-slate-600 text-xs md:text-sm mb-3">
+                    ระบบบันทึกผลคะแนนของ <b id="final-player-name" class="text-indigo-600">ผู้เล่น</b> เรียบร้อยแล้วค่ะ
+                </p>
+
+                <div class="bg-amber-50 border-2 border-amber-300 rounded-2xl p-3 max-w-sm w-full mb-3 shadow-md">
+                    <p class="text-slate-500 text-xs mb-1">คะแนนรวมที่ได้</p>
+                    <div class="text-4xl font-heading font-bold text-amber-500 mb-1">
+                        <span id="final-score">6</span> / <span id="max-score-display">6</span>
+                    </div>
+                    <p id="final-msg" class="text-slate-700 font-medium text-xs md:text-sm">
+                        ยอดเยี่ยม! คุณเข้าใจการเรียงลำดับอัลกอริทึมได้เป็นอย่างดี
+                    </p>
+                </div>
+
+                <!-- การ์ดสรุปบทเรียน (Algorithm Knowledge Summary) -->
+                <div class="bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-3 max-w-md w-full mb-4 text-left shadow-sm">
+                    <p class="font-heading font-bold text-indigo-900 text-xs md:text-sm mb-1 text-center">💡 สรุปความรู้บทเรียน อัลกอริทึม (Algorithm)</p>
+                    <p class="text-xs text-indigo-950 leading-relaxed text-center">
+                        “การเรียงขั้นตอนให้เป็นลำดับเพื่อใหสามารถทำงานหรือแก้ปัญหาได้สำเร็จ เรียกว่า <b>อัลกอริทึม</b> ซึ่งพวกเรานำมาใช้ในชีวิตประจำวันอยู่ตลอดเวลา!”
+                    </p>
+                </div>
+
+                <div class="flex space-x-2 w-full max-w-sm">
+                    <button onclick="startGame()" class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-heading font-bold py-2.5 rounded-2xl shadow-md transition-transform active:scale-95 text-xs md:text-sm">
+                        🔄 ลองทำใหม่อีกครั้ง
+                    </button>
+                    <button onclick="resetToHome()" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-heading font-bold py-2.5 rounded-2xl transition-all text-xs md:text-sm">
+                        🏠 กลับหน้าแรก
+                    </button>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- MODAL 1: ป๊อปอัปเข้าสู่ระบบสำหรับคุณครู (Teacher Login) -->
+    <div id="teacher-login-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-3xl border-4 border-slate-700 p-6 max-w-xs w-full text-center shadow-2xl">
+            <div class="text-4xl mb-2">🔒</div>
+            <h3 class="text-lg font-heading font-bold text-slate-800 mb-1">สำหรับคุณครู</h3>
+            <p class="text-slate-500 text-xs mb-4">กรุณากรอกรหัสผ่านเพื่อตรวจคะแนนนักเรียน</p>
+            
+            <input type="password" id="teacher-pass-input" placeholder="ใส่รหัสผ่านครู..." class="w-full px-3 py-2 border-2 border-slate-300 rounded-xl text-center text-sm font-bold focus:outline-none focus:border-indigo-500 mb-3">
+            
+            <div class="flex space-x-2">
+                <button onclick="closeTeacherLoginModal()" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2 rounded-xl text-xs">ยกเลิก</button>
+                <button onclick="verifyTeacherPass()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-xl text-xs">เข้าสู่ระบบ</button>
+            </div>
+            <p class="text-[10px] text-slate-400 mt-3">*รหัสผ่านเริ่มต้นคือ: 1234</p>
+        </div>
+    </div>
+
+    <!-- MODAL 2: แดชบอร์ดคะแนนของคุณครู (Teacher Dashboard) -->
+    <div id="teacher-dashboard-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-3xl border-4 border-indigo-400 p-4 md:p-6 max-w-2xl w-full shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-200">
+                <div>
+                    <h3 class="text-lg md:text-xl font-heading font-bold text-indigo-900 flex items-center space-x-2">
+                        <span>📊 ตารางบันทึกคะแนนการเรียงลำดับ (คุณครู)</span>
+                    </h3>
+                    <p class="text-xs text-slate-500">รวมรายชื่อผู้เล่น / กลุ่มนักเรียนทั้งหมด</p>
+                </div>
+                <button onclick="closeTeacherDashboard()" class="text-slate-400 hover:text-slate-600 font-bold text-xl px-2">✕</button>
+            </div>
+
+            <!-- รายการคะแนน -->
+            <div class="flex-1 overflow-y-auto my-2 pr-1">
+                <table class="w-full text-left text-xs md:text-sm">
+                    <thead class="bg-indigo-100 text-indigo-900 font-heading font-bold sticky top-0">
+                        <tr>
+                            <th class="p-2.5 rounded-l-lg">ลำดับ</th>
+                            <th class="p-2.5">ชื่อผู้เล่น / กลุ่ม</th>
+                            <th class="p-2.5 text-center">คะแนนที่ได้</th>
+                            <th class="p-2.5 text-right rounded-r-lg">วันที่และเวลา</th>
+                        </tr>
+                    </thead>
+                    <tbody id="teacher-records-tbody" class="divide-y divide-slate-100 text-slate-700">
+                        <!-- รายชื่อจะใส่ผ่าน JS / Firebase -->
+                    </tbody>
+                </table>
+                <div id="empty-records-msg" class="text-center py-10 text-slate-400 text-xs hidden">
+                    ยังไม่มีผู้เล่นบันทึกคะแนน
+                </div>
+            </div>
+
+            <!-- ปุ่มควบคุมของคุณครู -->
+            <div class="pt-3 border-t border-slate-200 flex flex-wrap justify-between items-center gap-2 text-xs">
+                <div class="flex space-x-2">
+                    <button onclick="exportScoresToPrint()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-xl">
+                        🖨️ พิมพ์รายงานคะแนน
+                    </button>
+                    <button onclick="clearAllTeacherRecords()" class="text-rose-600 hover:bg-rose-50 font-bold px-3 py-2 rounded-xl border border-rose-200">
+                        🗑️ ลบข้อมูลทั้งหมด
+                    </button>
+                </div>
+                <button onclick="closeTeacherDashboard()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-xl">
+                    ปิดหน้าต่างนี้
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: Pop-up แจ้งเรียงถูก / ผิด -->
+    <div id="feedback-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-3xl border-4 border-amber-300 p-5 max-w-xs w-full text-center shadow-2xl">
+            <div id="modal-icon" class="text-6xl mb-2">✅</div>
+            <h3 id="modal-title" class="text-xl font-heading font-bold text-emerald-600 mb-1">ถูกต้อง อัลกอริทึมสมบูรณ์!</h3>
+            <p id="modal-msg" class="text-slate-600 text-xs md:text-sm mb-4">รายละเอียด...</p>
+            <button id="modal-btn" onclick="nextQuestionOrFinish()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-heading font-bold py-2.5 px-4 rounded-xl shadow-md">
+                ไปข้อต่อไป ➔
+            </button>
+        </div>
+    </div>
+
+    <!-- Firebase / Firestore SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'sequence-mastery-app';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+
+        let db = null;
+        let auth = null;
+        let currentUser = null;
+
+        if (firebaseConfig) {
+            try {
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                const initAuth = async () => {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        const credential = await signInWithCustomToken(auth, __initial_auth_token);
+                        currentUser = credential.user;
+                    } else {
+                        const credential = await signInAnonymously(auth);
+                        currentUser = credential.user;
+                    }
+                    listenToScores();
+                };
+                initAuth();
+            } catch (err) {
+                console.warn("Firebase fallback mode:", err);
+            }
+        }
+
+        function listenToScores() {
+            if (!db) return;
+            const publicCol = collection(db, 'artifacts', appId, 'public', 'data', 'sequence_scores');
+            
+            onSnapshot(publicCol, (snapshot) => {
+                const records = [];
+                snapshot.forEach((docSnap) => {
+                    records.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                window.cloudRecords = records;
+                window.updateTeacherUI();
+            }, (error) => {
+                console.error("Firestore error:", error);
+            });
+        }
+
+        window.saveStudentScoreToCloud = async function(name, score) {
+            const now = new Date();
+            const timeStr = now.toLocaleDateString('th-TH') + ' ' + now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+            const record = {
+                name: name,
+                score: score,
+                time: timeStr,
+                timestamp: Date.now()
+            };
+
+            let localRecords = [];
+            try {
+                localRecords = JSON.parse(localStorage.getItem('seq_quiz_records') || '[]');
+            } catch(e){}
+            localRecords.push(record);
+            localStorage.setItem('seq_quiz_records', JSON.stringify(localRecords));
+
+            if (db) {
+                try {
+                    const publicCol = collection(db, 'artifacts', appId, 'public', 'data', 'sequence_scores');
+                    await addDoc(publicCol, record);
+                } catch(e) {
+                    console.error("Error saving to Firestore:", e);
+                }
+            }
+        };
+
+        window.clearCloudRecords = async function() {
+            if (db && window.cloudRecords) {
+                for (const item of window.cloudRecords) {
+                    if (item.id) {
+                        try {
+                            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'sequence_scores', item.id));
+                        } catch(e){}
+                    }
+                }
+            }
+            localStorage.removeItem('seq_quiz_records');
+            window.cloudRecords = [];
+            window.updateTeacherUI();
+        };
+    </script>
+
+    <script>
+        // Web Audio API สำหรับเสียงเอฟเฟกต์
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'correct') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+                osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1); // E5
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.3);
+            } else if (type === 'wrong') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(220, audioCtx.currentTime); // A3
+                osc.frequency.setValueAtTime(164.81, audioCtx.currentTime + 0.15); // E3
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.4);
+            } else {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(450, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.08);
+            }
+        }
+
+        // รวมโจทย์ทั้งหมดในที่เดียว (ข้อแรกเป็นข้อตัวอย่าง)
+        const gameTopics = [
+            {
+                id: 0,
+                icon: "🍳",
+                title: "การทำไข่เจียว",
+                isTutorial: true,
+                badge: "🎓 ข้อตัวอย่าง (ฝึกทำก่อน)",
+                steps: [
+                    { id: "ก", text: "ตอกไข่ใส่ชาม" },
+                    { id: "ค", text: "ตีไข่ให้เข้ากัน" },
+                    { id: "ข", text: "ตั้งกระทะและใส่น้ำมัน" },
+                    { id: "ง", text: "เทไข่ลงกระทะ" },
+                    { id: "จ", text: "กลับไข่และทอดจนสุก" }
+                ],
+                correctOrder: ["ก", "ค", "ข", "ง", "จ"],
+                explanation: "ลำดับที่ถูกต้องคือ: ตอกไข่ใส่ชาม ➔ ตีไข่ให้เข้ากัน ➔ ตั้งกระทะและใส่น้ำมัน ➔ เทไข่ลงกระทะ ➔ กลับไข่และทอดจนสุก"
+            },
+            {
+                id: 1,
+                icon: "🪥",
+                title: "การแปรงฟัน",
+                isTutorial: false,
+                steps: [
+                    { id: "ก", text: "บีบยาสีฟันลงบนแปรงฟัน" },
+                    { id: "ข", text: "บ้วนปากด้วยน้ำสะอาดเล็กน้อย" },
+                    { id: "ค", text: "แปรงฟันให้ทั่วทุกซี่นาน 2 นาที" },
+                    { id: "ง", text: "บ้วนฟองยาสีฟันออกจากปาก" },
+                    { id: "จ", text: "ล้างแปรงฟันให้สะอาดแล้วเก็บเข้าที่" }
+                ],
+                correctOrder: ["ข", "ก", "ค", "ง", "จ"]
+            },
+            {
+                id: 2,
+                icon: "🍜",
+                title: "ต้มบะหมี่กึ่งสำเร็จรูป",
+                isTutorial: false,
+                steps: [
+                    { id: "ก", text: "ต้มน้ำให้เดือด" },
+                    { id: "ข", text: "ฉีกซองบะหมี่และใส่ลงในน้ำเดือด" },
+                    { id: "ค", text: "ใส่เครื่องปรุงรสตามชอบ" },
+                    { id: "ง", text: "รอประมาณ 3 นาทีให้เส้นนุ่ม" },
+                    { id: "จ", text: "เทใส่ชามพร้อมรับประทาน" }
+                ],
+                correctOrder: ["ก", "ข", "ค", "ง", "จ"]
+            },
+            {
+                id: 3,
+                icon: "🎒",
+                title: "เตรียมกระเป๋าไปโรงเรียน",
+                isTutorial: false,
+                steps: [
+                    { id: "ก", text: "ดูตารางเรียนของวันพรุ่งนี้" },
+                    { id: "ข", text: "หยิบหนังสือและสมุดตามตารางเรียนใส่กระเป๋า" },
+                    { id: "ค", text: "ตรวจสอบว่ามีกล่องดินสอและอุปกรณ์พร้อมไหม" },
+                    { id: "ง", text: "รูดซิปกระเป๋าปิดให้เรียบร้อย" },
+                    { id: "จ", text: "วางกระเป๋าไว้จุดเตรียมพร้อมเดินทาง" }
+                ],
+                correctOrder: ["ก", "ข", "ค", "ง", "จ"]
+            },
+            {
+                id: 4,
+                icon: "🧋",
+                title: "ซื้อเครื่องดื่ม",
+                isTutorial: false,
+                steps: [
+                    { id: "ก", text: "เข้าแถวรอคิวหน้าหน้าร้าน" },
+                    { id: "ข", text: "สั่งเมนูเครื่องดื่มที่ต้องการกับพนักงาน" },
+                    { id: "ค", text: "ชำระเงินค่าเครื่องดื่ม" },
+                    { id: "ง", text: "รอรับเครื่องดื่มที่ทำเสร็จแล้ว" },
+                    { id: "จ", text: "รับเครื่องดื่มและเจาะหลอดพร้อมดื่ม" }
+                ],
+                correctOrder: ["ก", "ข", "ค", "ง", "จ"]
+            },
+            {
+                id: 5,
+                icon: "🚌",
+                title: "เดินทางไปโรงเรียน",
+                isTutorial: false,
+                steps: [
+                    { id: "ก", text: "สวมชุดนักเรียนและสะพายกระเป๋า" },
+                    { id: "ข", text: "ออกจากบ้านไปยังจุดขึ้นรถ" },
+                    { id: "ค", text: "ขึ้นรถและนั่งหรือจับราวให้ปลอดภัย" },
+                    { id: "ง", text: "ลงจากรถเมื่อถึงหน้าโรงเรียน" },
+                    { id: "จ", text: "เดินเข้าประตูโรงเรียนและทักทายคุณครู" }
+                ],
+                correctOrder: ["ก", "ข", "ค", "ง", "จ"]
+            },
+            {
+                id: 6,
+                icon: "📱",
+                title: "ส่งข้อความหาเพื่อน",
+                isTutorial: false,
+                steps: [
+                    { id: "ก", text: "เปิดปลดล็อกหน้าจอมือถือ" },
+                    { id: "ข", text: "เปิดแอปพลิเคชันสำหรับส่งข้อความ" },
+                    { id: "ค", text: "เลือกชื่อเพื่อนที่ต้องการส่งข้อความถึง" },
+                    { id: "ง", text: "พิมพ์ข้อความในช่องแชท" },
+                    { id: "จ", text: "กดปุ่ม 'ส่งข้อความ'" }
+                ],
+                correctOrder: ["ก", "ข", "ค", "ง", "จ"]
+            }
+        ];
+
+        let currentTopicIndex = 0;
+        let score = 0;
+        let sortableInstance = null;
+        let currentplayerName = "ผู้เล่น";
+        let isCorrectState = false;
+        let hasAttemptedCurrentQuestion = false; // ตัวแปรเช็กว่าเคยตอบผิดในข้อปัจจุบันหรือยัง
+
+        function checkAndStartGame() {
+            const input = document.getElementById('player-name-input').value.trim();
+            if (!input) {
+                alert("กรุณาพิมพ์ชื่อผู้เล่น หรือ ชื่อกลุ่ม ก่อนเริ่มเล่นนะจ๊ะ!");
+                document.getElementById('player-name-input').focus();
+                return;
+            }
+            currentplayerName = input;
+            startGame();
+        }
+
+        function startGame() {
+            playSound('click');
+            score = 0;
+            currentTopicIndex = 0;
+            
+            document.getElementById('level-text-label').textContent = "ข้อที่";
+            document.getElementById('score-display').textContent = score;
+            document.getElementById('current-level-display').textContent = currentTopicIndex + 1;
+            document.getElementById('total-levels-display').textContent = gameTopics.length;
+            document.getElementById('player-badge').classList.remove('hidden');
+            document.getElementById('player-name-display').textContent = currentplayerName;
+
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('end-screen').classList.add('hidden');
+            document.getElementById('status-bar').classList.remove('hidden');
+            document.getElementById('gameplay-screen').classList.remove('hidden');
+
+            loadTopic(gameTopics[currentTopicIndex]);
+        }
+
+        // โหลดข้อมูลโจทย์เข้าสู่ UI
+        function loadTopic(topicData) {
+            hasAttemptedCurrentQuestion = false; // รีเซ็ตสถานะการตอบผิดเมื่อขึ้นข้อใหม่
+            document.getElementById('topic-icon').textContent = topicData.icon;
+            document.getElementById('topic-title').textContent = topicData.title;
+
+            const banner = document.getElementById('tutorial-banner');
+            if (topicData.isTutorial) {
+                banner.classList.remove('hidden');
+                document.getElementById('topic-badge').textContent = topicData.badge;
+                document.getElementById('topic-badge').className = "bg-amber-500 text-white font-heading text-[11px] md:text-xs font-bold px-2.5 py-0.5 rounded-full";
+            } else {
+                banner.classList.add('hidden');
+                document.getElementById('topic-badge').textContent = `โจทย์ข้อที่ ${currentTopicIndex} จาก ${gameTopics.length - 1}`;
+                document.getElementById('topic-badge').className = "bg-indigo-600 text-white font-heading text-[11px] md:text-xs font-bold px-2.5 py-0.5 rounded-full";
+            }
+
+            const container = document.getElementById('sortable-list');
+            container.innerHTML = '';
+
+            // สุ่มสลับขั้นตอนเริ่มต้น (Shuffle steps)
+            let shuffledSteps = [...topicData.steps];
+            shuffledSteps.sort(() => Math.random() - 0.5);
+
+            shuffledSteps.forEach((step, idx) => {
+                const itemEl = document.createElement('div');
+                itemEl.dataset.id = step.id;
+                itemEl.className = 'step-item bg-white border-2 border-indigo-200 hover:border-indigo-400 p-2.5 rounded-2xl flex items-center justify-between shadow-sm transition-all cursor-grab active:cursor-grabbing';
+                itemEl.innerHTML = `
+                    <div class="flex items-center space-x-3 pointer-events-none">
+                        <span class="step-number bg-indigo-100 text-indigo-800 font-heading font-bold w-7 h-7 rounded-xl flex items-center justify-center text-xs shrink-0">
+                            ${idx + 1}
+                        </span>
+                        <span class="text-xs md:text-sm text-slate-700 font-medium">${step.text}</span>
+                    </div>
+                    <div class="flex items-center space-x-1 shrink-0">
+                        <button type="button" onclick="moveItemUp(this, event)" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded-lg text-xs">⬆️</button>
+                        <button type="button" onclick="moveItemDown(this, event)" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded-lg text-xs">⬇️</button>
+                    </div>
+                `;
+                container.appendChild(itemEl);
+            });
+
+            // เปิดใช้งาน SortableJS สำหรับการลากวาง (Drag & Drop)
+            if (sortableInstance) sortableInstance.destroy();
+            sortableInstance = new Sortable(container, {
+                animation: 200,
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                onEnd: updateStepNumbers
+            });
+
+            updateStepNumbers();
+        }
+
+        function updateStepNumbers() {
+            const container = document.getElementById('sortable-list');
+            const items = container.querySelectorAll('.step-item');
+            items.forEach((item, idx) => {
+                const numSpan = item.querySelector('.step-number');
+                if (numSpan) numSpan.textContent = idx + 1;
+            });
+        }
+
+        function moveItemUp(btn, e) {
+            e.stopPropagation();
+            playSound('click');
+            const item = btn.closest('.step-item');
+            const prev = item.previousElementSibling;
+            if (prev) {
+                item.parentNode.insertBefore(item, prev);
+                updateStepNumbers();
+            }
+        }
+
+        function moveItemDown(btn, e) {
+            e.stopPropagation();
+            playSound('click');
+            const item = btn.closest('.step-item');
+            const next = item.nextElementSibling;
+            if (next) {
+                item.parentNode.insertBefore(next, item);
+                updateStepNumbers();
+            }
+        }
+
+        // ตรวจสอบความถูกต้องของการเรียงลำดับ
+        function submitSequence() {
+            const container = document.getElementById('sortable-list');
+            const currentItems = Array.from(container.querySelectorAll('.step-item')).map(el => el.dataset.id);
+
+            const topicData = gameTopics[currentTopicIndex];
+            const correctOrder = topicData.correctOrder;
+
+            const isCorrect = JSON.stringify(currentItems) === JSON.stringify(correctOrder);
+
+            const modal = document.getElementById('feedback-modal');
+            const icon = document.getElementById('modal-icon');
+            const title = document.getElementById('modal-title');
+            const msg = document.getElementById('modal-msg');
+            const btn = document.getElementById('modal-btn');
+
+            if (isCorrect) {
+                isCorrectState = true;
+                playSound('correct');
+                // ให้คะแนนเฉพาะกรณีที่ยังไม่เคยตอบผิดในข้อนั้น และไม่ใช่ข้อตัวอย่าง
+                if (!hasAttemptedCurrentQuestion && !topicData.isTutorial) {
+                    score += 1;
+                    document.getElementById('score-display').textContent = score;
+                }
+
+                icon.textContent = "🎉";
+                if (topicData.isTutorial) {
+                    title.textContent = "เรียงตัวอย่างถูกต้อง!";
+                    msg.textContent = topicData.explanation;
+                } else {
+                    title.textContent = hasAttemptedCurrentQuestion ? "ถูกต้องแล้ว!" : "ตอบถูกตั้งแต่ครั้งแรก! (ได้ 1 คะแนน)";
+                    msg.textContent = "ยอดเยี่ยมมาก! คุณเรียงลำดับขั้นตอนได้อย่างถูกต้องแม่นยำ";
+                }
+                title.className = "text-xl font-heading font-bold text-emerald-600 mb-1";
+
+                if (topicData.isTutorial) {
+                    btn.textContent = "พร้อมแล้ว! เริ่มทำข้อที่ 1 🚀";
+                    btn.className = "w-full bg-emerald-500 hover:bg-emerald-600 text-white font-heading font-bold py-2.5 px-4 rounded-xl shadow-md";
+                } else {
+                    btn.textContent = currentTopicIndex < gameTopics.length - 1 ? "ไปข้อต่อไป ➔" : "ดูผลสรุปคะแนน 🏆";
+                    btn.className = "w-full bg-emerald-500 hover:bg-emerald-600 text-white font-heading font-bold py-2.5 px-4 rounded-xl shadow-md";
+                }
+            } else {
+                isCorrectState = false;
+                hasAttemptedCurrentQuestion = true; // ทำเครื่องหมายว่าข้อนี้เคยตอบผิดแล้ว
+                playSound('wrong');
+                icon.textContent = "❌";
+                
+                title.textContent = "ยังไม่ถูกต้อง!";
+                msg.textContent = "ลำดับขั้นตอนยังไม่ถูกต้อง ลองอ่านทบทวนและเรียงใหม่อีกครั้งนะจ๊ะ";
+                title.className = "text-xl font-heading font-bold text-rose-500 mb-1";
+                
+                btn.textContent = "🔄 ลองเรียงใหม่อีกครั้ง";
+                btn.className = "w-full bg-amber-500 hover:bg-amber-600 text-white font-heading font-bold py-2.5 px-4 rounded-xl shadow-md";
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function nextQuestionOrFinish() {
+            playSound('click');
+            document.getElementById('feedback-modal').classList.add('hidden');
+
+            if (isCorrectState) {
+                currentTopicIndex++;
+                if (currentTopicIndex >= gameTopics.length) {
+                    endGame();
+                } else {
+                    document.getElementById('current-level-display').textContent = currentTopicIndex + 1;
+                    loadTopic(gameTopics[currentTopicIndex]);
+                }
+            }
+        }
+
+        function endGame() {
+            document.getElementById('status-bar').classList.add('hidden');
+            document.getElementById('gameplay-screen').classList.add('hidden');
+            document.getElementById('end-screen').classList.remove('hidden');
+
+            const totalRealQuestions = gameTopics.length - 1; // ไม่นับข้อตัวอย่าง
+            document.getElementById('final-score').textContent = score;
+            document.getElementById('max-score-display').textContent = totalRealQuestions;
+            document.getElementById('final-player-name').textContent = currentplayerName;
+
+            const endIcon = document.getElementById('end-icon');
+            const finalMsg = document.getElementById('final-msg');
+
+            if (score === totalRealQuestions) {
+                endIcon.textContent = "🏆";
+                finalMsg.textContent = "สุดยอดมาก! คุณและทีมเรียงลำดับขั้นตอนอัลกอริทึมถูกต้อง 100%";
+            } else if (score >= 3) {
+                endIcon.textContent = "👏";
+                finalMsg.textContent = "เก่งมาก! ทำได้ดีแล้ว ลองทบทวนข้อที่พลาดไปนะ";
+            } else {
+                endIcon.textContent = "💡";
+                finalMsg.textContent = "ฝึกฝนอีกนิดนะ! ลองเรียงลำดับขั้นตอนในชีวิตประจำวันใหม่อีกครั้ง";
+            }
+
+            if (window.saveStudentScoreToCloud) {
+                window.saveStudentScoreToCloud(currentplayerName, score);
+            }
+        }
+
+        // ==========================================
+        // ระบบโหมดคุณครู (Teacher Dashboard)
+        // ==========================================
+        function openTeacherLoginModal() {
+            playSound('click');
+            document.getElementById('teacher-pass-input').value = '';
+            document.getElementById('teacher-login-modal').classList.remove('hidden');
+            document.getElementById('teacher-pass-input').focus();
+        }
+
+        function closeTeacherLoginModal() {
+            playSound('click');
+            document.getElementById('teacher-login-modal').classList.add('hidden');
+        }
+
+        function verifyTeacherPass() {
+            const pass = document.getElementById('teacher-pass-input').value;
+            if (pass === '1234') {
+                closeTeacherLoginModal();
+                openTeacherDashboard();
+            } else {
+                alert('รหัสผ่านคุณครูไม่ถูกต้อง!');
+            }
+        }
+
+        function openTeacherDashboard() {
+            window.updateTeacherUI();
+            document.getElementById('teacher-dashboard-modal').classList.remove('hidden');
+        }
+
+        function closeTeacherDashboard() {
+            playSound('click');
+            document.getElementById('teacher-dashboard-modal').classList.add('hidden');
+        }
+
+        window.updateTeacherUI = function() {
+            const tbody = document.getElementById('teacher-records-tbody');
+            const emptyMsg = document.getElementById('empty-records-msg');
+            if (!tbody) return;
+
+            let records = window.cloudRecords || [];
+            if (records.length === 0) {
+                try {
+                    records = JSON.parse(localStorage.getItem('seq_quiz_records') || '[]');
+                } catch(e){}
+            }
+
+            tbody.innerHTML = '';
+
+            if (records.length === 0) {
+                emptyMsg.classList.remove('hidden');
+            } else {
+                emptyMsg.classList.add('hidden');
+                // เรียงตามคะแนนสูงสุดลงมาน้อยสุด (หากคะแนนเท่ากัน ให้เรียงจากเวลาที่เล่นล่าสุด)
+                records.sort((a, b) => {
+                    if (b.score !== a.score) {
+                        return b.score - a.score;
+                    }
+                    return b.timestamp - a.timestamp;
+                });
+
+                records.forEach((item, index) => {
+                    const tr = document.createElement('tr');
+                    tr.className = index % 2 === 0 ? 'bg-white' : 'bg-slate-50';
+                    tr.innerHTML = `
+                        <td class="p-2.5 font-bold ${index === 0 ? 'text-amber-500 text-base' : index === 1 ? 'text-slate-400 font-bold' : index === 2 ? 'text-amber-700 font-bold' : 'text-slate-400'}">
+                            ${index === 0 ? '🥇 1' : index === 1 ? '🥈 2' : index === 2 ? '🥉 3' : index + 1}
+                        </td>
+                        <td class="p-2.5 font-medium text-slate-800">${escapeHtml(item.name)}</td>
+                        <td class="p-2.5 text-center font-bold text-amber-600 text-base">${item.score} / 6</td>
+                        <td class="p-2.5 text-right text-slate-400 text-[11px]">${item.time}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        };
+
+        function escapeHtml(text) {
+            return (text || '').replace(/[&<"']/g, function(m) {
+                return { '&': '&amp;', '<': '&lt;', '"': '&quot;', "'": '&#039;' }[m];
+            });
+        }
+
+        function clearAllTeacherRecords() {
+            if (confirm("คุณครูแน่ใจหรือไม่ว่าต้องการลบข้อมูลคะแนนของนักเรียนทั้งหมด?")) {
+                if (window.clearCloudRecords) {
+                    window.clearCloudRecords();
+                }
+                alert("ลบข้อมูลเรียบร้อยแล้วค่ะ");
+            }
+        }
+
+        function exportScoresToPrint() {
+            window.print();
+        }
+
+        function resetToHome() {
+            playSound('click');
+            document.getElementById('end-screen').classList.add('hidden');
+            document.getElementById('status-bar').classList.add('hidden');
+            document.getElementById('gameplay-screen').classList.add('hidden');
+            document.getElementById('start-screen').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
